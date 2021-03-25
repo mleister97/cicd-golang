@@ -43,6 +43,7 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/product", a.createProduct).Methods("POST")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.getProduct).Methods("GET")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.updateProduct).Methods("PUT")
+	a.Router.HandleFunc("/product/{id:[0-9]+}/update-price", a.updateProductPrice).Methods("PUT")
 	a.Router.HandleFunc("/product/{id:[0-9]+}", a.deleteProduct).Methods("DELETE")
 }
 
@@ -120,6 +121,42 @@ func (a *App) createProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusCreated, p)
+}
+
+func (a *App) updateProductPrice(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		return
+	}
+
+	var productPrice interface{}
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&productPrice); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid resquest payload")
+		return
+	}
+
+	m := productPrice.(map[string]interface{})
+
+	var p product
+	defer r.Body.Close()
+	p.ID = id
+
+	// fetch old name
+	oldProduct := product{ID: id}
+	_ = oldProduct.getProduct(a.DB)
+
+	p.Name = oldProduct.Name
+	p.Price = m["price"].(float64)
+
+	if err := p.updateProduct(a.DB); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, p)
 }
 
 func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {

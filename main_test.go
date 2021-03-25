@@ -101,7 +101,7 @@ func TestCreateProduct(t *testing.T) {
 
 func TestGetProduct(t *testing.T) {
 	clearTable()
-	addProducts(1)
+	addProducts(1, true)
 
 	req, _ := http.NewRequest("GET", "/product/1", nil)
 	response := executeRequest(req)
@@ -109,10 +109,54 @@ func TestGetProduct(t *testing.T) {
 	checkResponseCode(t, http.StatusOK, response.Code)
 }
 
+func TestGetUnavailableProduct(t *testing.T) {
+	clearTable()
+	addProducts(1, false)
+
+	req, _ := http.NewRequest("GET", "/product/1", nil)
+	response := executeRequest(req)
+
+	checkResponseCode(t, http.StatusBadRequest, response.Code)
+}
+
+func TestUpdateOnlyProductPrice(t *testing.T) {
+
+	clearTable()
+	addProducts(1, true)
+
+	req, _ := http.NewRequest("GET", "/product/1", nil)
+	response := executeRequest(req)
+	var originalProduct map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &originalProduct)
+
+	var jsonStr = []byte(`{"name":"new_name", "price": 22.22}`)
+	req, _ = http.NewRequest("PUT", "/product/1/update-price", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	response = executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	var m map[string]interface{}
+	json.Unmarshal(response.Body.Bytes(), &m)
+
+	if m["id"] != originalProduct["id"] {
+		t.Errorf("Expected the id to remain the same (%v). Got %v", originalProduct["id"], m["id"])
+	}
+
+	if m["name"] != originalProduct["name"] {
+		t.Errorf("Expected the name to NOT change, but changed from '%v' to '%v'", originalProduct["name"], m["name"])
+	}
+
+	if m["price"] != 22.22 {
+		t.Errorf("Expected the price to change from '%v' to '22.22'. Got '%v'", originalProduct["price"], m["price"])
+	}
+}
+
 func TestUpdateProduct(t *testing.T) {
 
 	clearTable()
-	addProducts(1)
+	addProducts(1, true)
 
 	req, _ := http.NewRequest("GET", "/product/1", nil)
 	response := executeRequest(req)
@@ -145,7 +189,7 @@ func TestUpdateProduct(t *testing.T) {
 
 func TestDeleteProduct(t *testing.T) {
 	clearTable()
-	addProducts(1)
+	addProducts(1, true)
 
 	req, _ := http.NewRequest("GET", "/product/1", nil)
 	response := executeRequest(req)
@@ -182,12 +226,12 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 	}
 }
 
-func addProducts(count int) {
+func addProducts(count int, available bool) {
 	if count < 1 {
 		count = 1
 	}
 
 	for i := 0; i < count; i++ {
-		a.DB.Exec("INSERT INTO products(name, price) VALUES($1, $2)", "Product "+strconv.Itoa(i), (i+1.0)*10)
+		a.DB.Exec("INSERT INTO products(name, price, available) VALUES($1, $2, $3)", "Product "+strconv.Itoa(i), (i+1.0)*10, available)
 	}
 }
