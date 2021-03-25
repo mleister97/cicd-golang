@@ -65,6 +65,11 @@ func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if p.Available == false {
+		respondWithError(w, http.StatusBadRequest, "Product is not available")
+		return
+	}
+
 	respondWithJSON(w, http.StatusOK, p)
 }
 

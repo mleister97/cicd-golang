@@ -70,7 +70,7 @@ func TestCreateProduct(t *testing.T) {
 
 	clearTable()
 
-	var jsonStr = []byte(`{"name":"test product", "price": 11.22}`)
+	var jsonStr = []byte(`{"name":"test product", "price": 11.22, "available": true}`)
 	req, _ := http.NewRequest("POST", "/product", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -86,6 +86,10 @@ func TestCreateProduct(t *testing.T) {
 
 	if m["price"] != 11.22 {
 		t.Errorf("Expected product price to be '11.22'. Got '%v'", m["price"])
+	}
+
+	if m["available"] != true {
+		t.Errorf("Expected product available to be 'true'. Got '%v'", m["available"])
 	}
 
 	// the id is compared to 1.0 because JSON unmarshaling converts numbers to
